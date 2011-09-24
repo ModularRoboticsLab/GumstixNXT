@@ -50,7 +50,7 @@ struct leddev_dev {
   /* Standard fields */
   dev_t devt; // kernel data structure for device numbers (major,minor)
   struct cdev cdev; // kernel data structure for character device
-  struct class *class; // kernel data structure for device driver class [LDD Chapter 14]
+  struct class *class; // kernel data structure for device driver class /sys/class/leddev [LDD Chapter 14]
   /* Driver-specific fields */
   int value; // the integer value currently shown (interpreting the LEDs as bits in a number)
 };
@@ -175,7 +175,7 @@ static int __init leddev_init_cdev(void)
   return 0;
 }
 
-/* Create a class for the device driver [LDD Ch 14] */
+/* Create a class for the device driver /sys/class/leddev [LDD Ch 14] */
 static int __init leddev_init_class(void)
 {
   /* Create a class named leddev */
