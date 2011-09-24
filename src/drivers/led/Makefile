@@ -1,7 +1,13 @@
-# cross-compile module makefile
+# Cross-compile module makefile for leddev
 
+# Target directory for "install", customize
+INSTALLDIR=/mnt/oe/home/export
+# Kernel module files to copiler
+MODULES=leddev.o
+
+# Generic kernel modoule makefile
 ifneq ($(KERNELRELEASE),)
-    obj-m := leddev.o
+    obj-m := §(MODULES)
 else
     PWD := $(shell pwd)
 
@@ -13,7 +19,7 @@ else
 endif
 
 install:
-	cp leddev.ko /mnt/oe/home/export
+	cp $(MODULES) $(INSTALLDIR)
 
 clean:
 	rm -rf *~ *.ko *.o *.mod.c modules.order Module.symvers .leddev* .tmp_versions
