@@ -1,6 +1,6 @@
 /*
 
-A gumstixtorms LED driver using GPIO, loosely based on irqlat by Scott
+A GumstixNXT LED driver using GPIO, loosely based on irqlat by Scott
 Ellis
 
 Sample useage (shell commands):
@@ -38,7 +38,7 @@ echo clr2clr3clr7inv > /dev/leddev
 #define GPIO_BIT6 88
 #define GPIO_BIT7 87
 
-/* Number of GPIOs (generic driver that manages array of GPIOs) */
+/* Number of GPIOs (this is a generic driver that manages array of GPIOs) */
 #define GPIO_N_BITS 8
 
 /* Signals to send to GPIOs to turn LEDs on and off */
@@ -47,12 +47,12 @@ echo clr2clr3clr7inv > /dev/leddev
 
 /* leddev device structure */
 struct leddev_dev {
-  // Standard fields
-  dev_t devt;
-  struct cdev cdev;
-  struct class *class;
-  // Driver-specific fields
-  int value;
+  /* Standard fields */
+  dev_t devt; // kernel data structure for device numbers (major,minor)
+  struct cdev cdev; // kernel data structure for character device
+  struct class *class; // kernel data structure for device driver class [LDD Chapter 14]
+  /* Driver-specific fields */
+  int value; // the integer value currently shown (interpreting the LEDs as bits in a number)
 };
 
 /* device structure instance */
@@ -71,7 +71,7 @@ static void leddev_reset(void)
   // Reset level shifter control
   gpio_set_value(GPIO_OE, 1);
   gpio_set_value(GPIO_DIR, 0);
-  // Reset each bit
+  // Reset each bit to off state
   for(index=0; index<GPIO_N_BITS; index++)
     gpio_set_value(gpio_bits[index], BIT_OFF);
   // Reset driver state
@@ -82,10 +82,10 @@ static void leddev_reset(void)
 static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
   char cmd[4]; // Buffer for command written by user
-  ssize_t status = 0; // Return status
+  ssize_t status = 0; // Return status, updated depending on input
   int bit; // Bit that the operation has an effect on
 
-  // Copy the data the user wrote from userspace
+  /* Copy the data the user wrote from userspace (how much is read depends on return value) */
   if (copy_from_user(cmd, buff, 4)) {
     printk(KERN_ALERT "Error copy_from_user\n");
     status = -EFAULT;
@@ -99,6 +99,7 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
     'inv' means invert pattern
   */
   bit = cmd[3] - '0'; // Assuming a legal command, this is the bit to manipulate
+
   if (cmd[0] == 's' && cmd[1] == 'e' && cmd[2] == 't') { // Set command?
     if(bit<0 || bit>=GPIO_N_BITS) { // Check that pin argument is legal
       printk(KERN_ALERT "LED illegal numeric argument to set\n");
@@ -106,9 +107,9 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
     }
     gpio_set_value(gpio_bits[bit], BIT_ON); // Turn the selected hardware bit on 
     leddev_dev.value |= 1<<bit; // Store the selected software bit
-    // Read 4 bytes, update return status correspondingly
-    status = 4;
+    status = 4; // Read 4 bytes, update return status correspondingly
   }
+
   else if (cmd[0] == 'c' && cmd[1] == 'l' && cmd[2] == 'r') { // Clear command?
     if(bit<0 || bit>=GPIO_N_BITS) { // Check that pin argument is legal
       printk(KERN_ALERT "LED illegal numeric argument to clr\n");
@@ -116,17 +117,17 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
     }
     gpio_set_value(gpio_bits[bit], BIT_OFF); // Turn the selected hardware bit off
     leddev_dev.value ^= 1<<bit; // Turn the selected software bit off
-    // Read 4 bytes, update return status correspondingly
-    status = 4;
+    status = 4; // Read 4 bytes, update return status correspondingly
   }
+
   else if (cmd[0] == 'i' && cmd[1] == 'n' && cmd[2] == 'v') { // Invert command?
     int index;
     leddev_dev.value = ~leddev_dev.value; // Invert bit pattern
     for(index=0; index<GPIO_N_BITS; index++) // Set each bit
       gpio_set_value(gpio_bits[index], leddev_dev.value&(1<<index) ? BIT_ON : BIT_OFF);
-    // Read 3 bytes, update return status correspondingly
-    status = 3;
+    status = 3; // Read 3 bytes, update return status correspondingly
   } 
+
   else { // Unrecognized command
     status = 1; // Read one byte, will be called again if there is more input
     if(cmd[0]!=10 && cmd[0]!=' ') // Ignore newline and space
@@ -135,7 +136,7 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
 
  leddev_write_done:
 
-  return status;
+  return status; // Negative=error, positive=success and indicates #bytes read
 }
 
 /* The file operations structure, operations not listed here are illegal */
@@ -144,24 +145,26 @@ static const struct file_operations leddev_fops = {
   .write = leddev_write,
 };
 
+/* Initialize the character device structure */
 static int __init leddev_init_cdev(void)
 {
   int error;
 
+  /* Initialize devt structure, major/minor numbers assigned afterwards */
   leddev_dev.devt = MKDEV(0, 0);
 
+  /* Assign major and minor device numbers to devt structure */
   error = alloc_chrdev_region(&leddev_dev.devt, 0, 1, "leddev");
   if (error < 0) {
-    printk(KERN_ALERT
-	   "alloc_chrdev_region() failed: error = %d \n",
-	   error);
-
+    printk(KERN_ALERT "alloc_chrdev_region() failed: error = %d \n", error);
     return -1;
   }
 
+  /* Initialize character device using the specific file operations structure */
   cdev_init(&leddev_dev.cdev, &leddev_fops);
   leddev_dev.cdev.owner = THIS_MODULE;
 
+  /* Request kernel to make one device available */
   error = cdev_add(&leddev_dev.cdev, leddev_dev.devt, 1);
   if (error) {
     printk(KERN_ALERT "cdev_add() failed: error = %d\n", error);
@@ -172,8 +175,10 @@ static int __init leddev_init_cdev(void)
   return 0;
 }
 
+/* Create a class for the device driver [LDD Ch 14] */
 static int __init leddev_init_class(void)
 {
+  /* Create a class named leddev */
   leddev_dev.class = class_create(THIS_MODULE, "leddev");
 
   if (!leddev_dev.class) {
@@ -181,6 +186,7 @@ static int __init leddev_init_class(void)
     return -1;
   }
 
+  /* Create class representation in the file system */
   if (!device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev")) {
     class_destroy(leddev_dev.class);
     return -1;
@@ -189,11 +195,13 @@ static int __init leddev_init_class(void)
   return 0;
 }
 
+/* Reserve and initialize the GPIO pins needed for the driver */
 static int __init leddev_init_pins(void)
 {
   int gpio_index;
   int direction_output_failure = 0;
 
+  /* Request and configure GPIOs for the level shifter */
   if (gpio_request(GPIO_OE, "OutputEnable")) {
     printk(KERN_ALERT "gpio_request failed\n");
     goto init_pins_fail_1;
@@ -214,6 +222,7 @@ static int __init leddev_init_pins(void)
     goto init_pins_fail_3;
   }
 
+  /* Request and configure GPIOs for the individual bits */
   for(gpio_index=0; gpio_index<GPIO_N_BITS; gpio_index++) {
     
     if (gpio_request(gpio_bits[gpio_index], "BitN")) {
@@ -231,15 +240,17 @@ static int __init leddev_init_pins(void)
 
   return 0;
 
- init_pins_fail_4: /* Reverse loop, freeing bits */
-  if(!direction_output_failure) gpio_index--; /* Failed trying to allocate, don't include */
+  /* Error handling code: free in reverse direction */
+
+ init_pins_fail_4: // Free those bit GPIOs that were allocated
+  if(!direction_output_failure) gpio_index--; // Failed trying to allocate, don't include
   for(; gpio_index>=0; gpio_index--)
     gpio_free(gpio_bits[gpio_index]);
   
- init_pins_fail_3:
+ init_pins_fail_3: 
   gpio_free(GPIO_DIR);
 
- init_pins_fail_2:
+ init_pins_fail_2: 
   gpio_free(GPIO_OE);
 
  init_pins_fail_1:
@@ -247,10 +258,13 @@ static int __init leddev_init_pins(void)
   return -1;
 }
 
+/* Kernel module initialization function */
 static int __init leddev_init(void)
 {
+  /* Zero memory for device struct */
   memset(&leddev_dev, 0, sizeof(leddev_dev));
 
+  /* Run initialization functions in-turn */
   if (leddev_init_cdev())
     goto init_fail_1;
 
@@ -260,9 +274,12 @@ static int __init leddev_init(void)
   if (leddev_init_pins() < 0)
     goto init_fail_3;
 
+  /* Reset driver state */
   leddev_reset();
 
   return 0;
+
+  /* Failure handling: free resources in reverse order (starting at the point we got to) */
 
  init_fail_3:
   device_destroy(leddev_dev.class, leddev_dev.devt);
@@ -278,23 +295,28 @@ static int __init leddev_init(void)
 }
 module_init(leddev_init);
 
+/* Kernel module release function */
 static void __exit leddev_exit(void)
 {
   int index;
+  /* Free all GPIOs */
   gpio_free(GPIO_OE);
   gpio_free(GPIO_DIR);
   for(index=0; index<GPIO_N_BITS; index++)
     gpio_free(gpio_bits[index]);
 
+  /* Free class device */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
+  /* Free device itself */
   cdev_del(&leddev_dev.cdev);
   unregister_chrdev_region(leddev_dev.devt, 1);
 }
 module_exit(leddev_exit);
 
+/* Module meta-information */
 MODULE_AUTHOR("Ulrik Pagh Schultz");
-MODULE_DESCRIPTION("A module for controlling gumstixstorms LEDs");
+MODULE_DESCRIPTION("A module for controlling GumstixNXT LEDs");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_VERSION("0.2");
+MODULE_VERSION("0.3");
