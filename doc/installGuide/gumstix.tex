@@ -1,5 +1,7 @@
 \documentclass[a4paper]{article}
 
+% better instructions for minicom
+
 \title{Getting started with GumstixNXT and OpenEmbedded}
 \author{David Brandt and Ulrik Pagh Schultz\\\{david.brandt,ups\}@mmmi.sdu.dk\\USD's Modular Robotics Lab\\University of Southern Denmark\\http://modular.mmmi.sdu.dk}
 \date{\today}
@@ -25,9 +27,10 @@
 
 \subsection*{Version and changes}
 
-Revision 1.3.1 (\today)
+Revision 1.3.2 (\today)
 %
 \begin{itemize}
+\item From revision 1.3.1: doing a clean start with fdisk, using minicom, ``1N8 typo''
 \item From revision 1.2: added a bit of information on Ubuntu 10.04
   LTS, typographic fixes, spellcheck
 \item From revision 1.1: fixed incorrect URLs, added information on
@@ -176,7 +179,7 @@ The gumstix boards comes with Linux preinstalled, however, I recommend using the
 
 The gumstix overo boards are able to boot directly from a micro SD or SDHC card. The following instructions will guide you how to make an SD card bootable an how to install your bootloaders and Linux distribution on it.
 
-In order to create the needed partition layout we will use \emph{fdisk} an during the guide I will assume that the SD card is referred to by the device name \emph{/dev/sde}, this might be different on your machine.
+In order to create the needed partition layout we will use \emph{fdisk} an during the guide I will assume that the SD card is referred to by the device name \emph{/dev/sde}, this might be different on your machine.  (This guide assumes an empty partition table, if your card is already partitioned you can delete partitions using fdisk: unmount the partitions, start fdisk as explained in the text, and use the ``d'' and ``w'' commands to first delete the partitions and then write the result to the disk.)
 
 First we need to unmount the card in order to modify it using fdisk:
 
@@ -287,13 +290,24 @@ directly on the board with input/output taking place via your
 computer.
 
 The recommended programs for communicating with the board are minicom
-and putty.  They should be setup for no flow control, 115200 baud 1N8.
+and putty.  They should be setup for no flow control, 115200 baud 8N1.
 You can connect via /dev/ttyUSB$n$, where $n$ is the number assigned
 by Linux whenever you connect the device (this might change from time
 to time).
 %
 Using the terminal program, you can see the messages at boot time, 
 login as ``root'' and execute commands interactively.
+
+In more detail, the program ``minicom'' can be used as follows.  On a
+stock Ubuntu you first need to install it (using the software center
+or apt-get, type ``minicom'' on the command line for instructions on
+how to install it).  To get the manual for minicom, use ``man
+minicom'', this instructs you to first run ``minicom -s'' to do the
+configuration, and since you are changing the system-wide defaults you
+should use ``sudo minicom -s'' after which you can simply run it by
+using ``minicom''.  To avoid changing the configuration every
+time the USB port changes, create multiple configuration files (all
+however using sudo).
 
 \section{Working with the device}
 
