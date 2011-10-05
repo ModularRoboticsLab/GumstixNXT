@@ -7,7 +7,7 @@ MODULES=leddev.o onebitleddev.o
 
 # Generic kernel modoule makefile
 ifneq ($(KERNELRELEASE),)
-    obj-m := §(MODULES)
+    obj-m := $(MODULES)
 else
     PWD := $(shell pwd)
 
