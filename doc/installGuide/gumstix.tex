@@ -25,9 +25,11 @@
 
 \subsection*{Version and changes}
 
-Revision 1.3.2 (\today)
+Revision 1.4.0alpha (\today)
 %
 \begin{itemize}
+\item From revision 1.3.2: added preliminary description of kernel
+  module development, including the LED driver and the motor driver
 \item From revision 1.3.1: doing a clean start with fdisk, using minicom, ``1N8 typo''
 \item From revision 1.2: added a bit of information on Ubuntu 10.04
   LTS, typographic fixes, spellcheck
@@ -465,13 +467,101 @@ to the ``IMAGE\_INSTALL'' variable.  Rebuilding will then download,
 compile and include the nano editor, which will be available after
 redeployment to the SD card.
 
-%\section{Kernel Module Development}
+\section{Kernel Module Development}
 
-%\subsection{LEDDEV 1-bit kernel module driver}
+{\em Note: this section contains a preliminary description of the LED
+  and motor drivers, more details will be added by Friday October
+  5th.}
 
-%\subsection{LEDDEV 8-bit kernel module driver}
+\subsection{LEDDEV 1-bit kernel module driver}
 
-%\subsection{Preliminary motor driver}
+We will now describe the development of a driver for a single-bit LED;
+this driver is extended in the next subsection to cover all 8 LEDs.
+The complete source code of the driver can be found in
+Appendix~\ref{app:leddev-one-bit}.
+
+The basic functionality can be divided into three parts: setup
+(loading), response to user requests, and unloading.  The setup is by
+far the most complicated part: it starts from the leddev\_init
+function (which is the module initialization function), first sets up
+the character device, then the supplemental class device, and last
+initializes the hardware.  Setting up the character device is done by
+initializing the device structure, dynamically assigning the major
+number, and requesting the kernel to create the entry under /dev.
+Setting up the character device is not covered here.  Setting up the
+hardware basically consists of requesting the required GPIOs and
+configuring the directionality.
+
+Response to user requests is implemented by the write function.  This
+function examines the user input (found in the character buffer) to
+decide what actions to take.  Actions are implemented by using the
+appropriate GPIOs.  Care must be takes to return a value corresponding
+to the number of bytes read.  Unloading is concerned with
+unregistering the device from the kernel and freeing the hardware
+resources.
+
+\subsection{LEDDEV 8-bit kernel module driver}
+
+The 8-bit kernel driver is a simple generalization of the 1-bit
+driver.  The main difference is that the device now --- for generality
+--- handles a set of GPIOs stored in an array.  Moreover, parsing the
+user command is a bit more intricate but not significantly different.
+
+\subsection{Developing a motor driver}
+
+Each motor has two control signals (PHASE$x$ and ENABLE$x$) and two
+tachometer signals (TACHO$x$A and TACHO$x$B), where $x$ is the number
+of the motor.  (See the GumstixNXT schematics.)  Basic motor control
+is simple: the motor is turned on and off using the ENABLE signal and
+the direction is controlled using the PHASE signal.
+%
+The tachometer signals give pulses when the motor moves, so motor
+speed is equal to number of pulses per time unit.  The direction can
+be read from the phase difference between TACHOxA and TACHOxB.
+
+The simplest control is thus to set ENABLE to 1 and PHASE to whatever
+direction you want, ignoring TACHO: this will make the motor rotate
+full-speed in the given direction.  To actuate the motor at less than
+maximum speed, you must use a PWM signal on ENABLE where the
+duty-cycle indicates how much torque the motor must yield.  More
+advanced control requires the TACHO signals to be taken into account.
+
+Controlling the motors can only be done once the appropriate
+multiplexing has been done in u-boot to give access to the appropriate
+pins as GPIOs.  Moreover, the level-shifters have to be set up
+correctly (PHASE and ENABLE as output, TACHO as input).
+Pull-up/pull-down in the u-boot configuration can be used to ensure
+that the motor does not start moving before the driver is ready.
+
+An additional complication which must be addressed is that in the
+default open embedded setup, an LCD driver is using the same CPU pins,
+which makes it impossible to control the motors.  To resolve this
+issue, the LCD driver must be disabled, which is done by configuring
+the kernel.  Follow the guide on jumpnowtek.com, which basically
+amounts to running the command
+
+\begin{quote}
+\promt{bitbake -c menuconfig virtual/kernel}
+\end{quote}
+
+This gives you a textual menu for configuring the kernel.  Choose
+``Device drivers'', ``Graphics support'', and disable everything
+except ``Support for framebuffer devices''.
+
+It is recommended that you configure the kernel and setup u-boot for
+access to the PHASE and ENABLE signals.  You can now test the motors
+at maximum speed through the kernel user-level /sys/class/gpio
+interface.  The GumstixNXT ``apps'' directory contains a number of
+examples that control the motors using this approach, e.g.\ the remote
+control car.  Once this is confirmed to work, you can implement a PWM
+control following the guide on jumpnowtek.com (the hardware directly
+supports PWM control).
+
+\subsection{Developing a motor controller}
+
+A motor controller requires use of the TACHO signals to read the
+position of the motor and adjust the PWM control accordingly.  This
+will be covered in a future version of the guide.
 
 \newpage
 \appendix
@@ -493,12 +583,19 @@ device incapable of booting by trying to fix this problem, so be
 careful.
 
 \section{LEDDEV 1-bit kernel module device driver}
+\label{app:leddev-one-bit}
 
 \begin{verbatim}
 /*
 
-A gumstixtorms LED driver using GPIO, loosely based on irqlat by Scott
+A GumstixNXT LED driver for a single LED using GPIO, loosely based on irqlat by Scott
 Ellis
+
+Sample useage (shell commands):
+insmod leddev.ko
+echo set > /dev/leddev
+echo inv > /dev/leddev
+echo clr > /dev/leddev
 
 */
 
@@ -515,88 +612,116 @@ Ellis
 #include <linux/workqueue.h>
 
 
+/* GPIOs for controlling the level shifter behavior */
 #define GPIO_OE 80
 #define GPIO_DIR 67
 
+/* GPIOs for controlling the individual bits */
 #define GPIO_BIT0 68
 
+/* Signals to send to GPIOs to turn LEDs on and off */
 #define BIT_ON 0
 #define BIT_OFF 1
 
+/* leddev device structure */
 struct leddev_dev {
-  dev_t devt;
-  struct cdev cdev;
-  struct class *class;
-  int value;
+  /* Standard fields */
+  dev_t devt; // kernel data structure for device numbers (major,minor)
+  struct cdev cdev; // kernel data structure for character device
+  struct class *class; // kernel data structure for device driver class /sys/class/leddev [LDD Chapter 14]
+  /* Driver-specific fields */
+  int value; // the integer value currently shown, 1 if on, 0 if off
 };
 
+/* device structure instance */
 static struct leddev_dev leddev_dev;
 
 /* Reset hardware settings and driver state */
 static void leddev_reset(void)
 {
+  // Reset level shifter control
   gpio_set_value(GPIO_OE, 1);
   gpio_set_value(GPIO_DIR, 0);
+  // Reset the bit to off state
   gpio_set_value(GPIO_BIT0, BIT_OFF);
+  // Reset driver state
   leddev_dev.value = 0;
 }
 
+/* Respond to a command that has been written to the device special file */
 static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
-  char cmd[4];
-  ssize_t status = 1;
-  int value;
+  char cmd[3]; // Buffer for command written by user
+  ssize_t status = 0; // Return status, updated depending on input
 
-  if (copy_from_user(cmd, buff, 1)) {
+  /* Copy the data the user wrote from userspace (how much is read depends on return value) */
+  if (copy_from_user(cmd, buff, 3)) {
     printk(KERN_ALERT "Error copy_from_user\n");
     status = -EFAULT;
     goto leddev_write_done;
   }
-
+    
   /*
-    Nothing fancy, '1' means set the bit, '0' means unset, '-' means invert
+    Process the command stored in the data
+    'set' means set the bit
+    'clr' means clear the bit
+    'inv' means invert
   */
-  if (cmd[0] == '1')
-    leddev_dev.value = 1;
-  else if (cmd[0] == '0')
-    leddev_dev.value = 0;
-  else if (cmd[0] == '-')
-    leddev_dev.value = ~leddev_dev.value;
+  if (cmd[0] == 's' && cmd[1] == 'e' && cmd[2] == 't') { // Set command?
+    gpio_set_value(GPIO_BIT0, BIT_ON); // Turn the hardware bit on 
+    leddev_dev.value = 1; // Store the software bit
+    status = 3; // Read 3 bytes, update return status correspondingly
+  }
 
-  value = leddev_dev.value;
-  if(value&1)
-    gpio_set_value(GPIO_BIT0, BIT_ON);
-  else
-    gpio_set_value(GPIO_BIT0, BIT_OFF);
+  else if (cmd[0] == 'c' && cmd[1] == 'l' && cmd[2] == 'r') { // Clear command?
+    gpio_set_value(GPIO_BIT0, BIT_OFF); // Turn the selected hardware bit off
+    leddev_dev.value = 0; // Turn the software bit off
+    status = 3; // Read 3 bytes, update return status correspondingly
+  }
+
+  else if (cmd[0] == 'i' && cmd[1] == 'n' && cmd[2] == 'v') { // Invert command?
+    leddev_dev.value = !leddev_dev.value; // Invert bit pattern
+    gpio_set_value(GPIO_BIT0, leddev_dev.value ? BIT_ON : BIT_OFF);
+    status = 3; // Read 3 bytes, update return status correspondingly
+  } 
+
+  else { // Unrecognized command
+    status = 1; // Read one byte, will be called again if there is more input
+    if(cmd[0]!=10 && cmd[0]!=' ') // Ignore newline and space
+      printk(KERN_ALERT "LED illegal command char %d\n", cmd[0]);
+  }
 
  leddev_write_done:
 
-  return status;
+  return status; // Negative=error, positive=success and indicates #bytes read
 }
 
+/* The file operations structure, operations not listed here are illegal */
 static const struct file_operations leddev_fops = {
   .owner = THIS_MODULE,
   .write = leddev_write,
 };
 
+/* Initialize the character device structure */
 static int __init leddev_init_cdev(void)
 {
   int error;
 
+  /* Initialize devt structure, major/minor numbers assigned afterwards */
   leddev_dev.devt = MKDEV(0, 0);
 
+  /* Assign major and minor device numbers to devt structure */
   error = alloc_chrdev_region(&leddev_dev.devt, 0, 1, "leddev");
   if (error < 0) {
-    printk(KERN_ALERT
-	   "alloc_chrdev_region() failed: error = %d \n",
-	   error);
-
+    printk(KERN_ALERT "alloc_chrdev_region() failed: error = %d \n", error);
     return -1;
   }
 
+  /* Initialize character device using the specific file operations structure */
   cdev_init(&leddev_dev.cdev, &leddev_fops);
   leddev_dev.cdev.owner = THIS_MODULE;
 
+  /* Request kernel to make one device available */
   error = cdev_add(&leddev_dev.cdev, leddev_dev.devt, 1);
   if (error) {
     printk(KERN_ALERT "cdev_add() failed: error = %d\n", error);
@@ -607,8 +732,10 @@ static int __init leddev_init_cdev(void)
   return 0;
 }
 
+/* Create a class for the device driver /sys/class/leddev [LDD Ch 14] */
 static int __init leddev_init_class(void)
 {
+  /* Create a class named leddev */
   leddev_dev.class = class_create(THIS_MODULE, "leddev");
 
   if (!leddev_dev.class) {
@@ -616,6 +743,7 @@ static int __init leddev_init_class(void)
     return -1;
   }
 
+  /* Create class representation in the file system */
   if (!device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev")) {
     class_destroy(leddev_dev.class);
     return -1;
@@ -624,8 +752,10 @@ static int __init leddev_init_class(void)
   return 0;
 }
 
+/* Reserve and initialize the GPIO pins needed for the driver */
 static int __init leddev_init_pins(void)
 {
+  /* Request and configure GPIOs for the level shifter */
   if (gpio_request(GPIO_OE, "OutputEnable")) {
     printk(KERN_ALERT "gpio_request failed\n");
     goto init_pins_fail_1;
@@ -647,24 +777,26 @@ static int __init leddev_init_pins(void)
   }
 
   if (gpio_request(GPIO_BIT0, "Bit0")) {
-    printk(KERN_ALERT "gpio_request(3) failed\n");
-    goto init_pins_fail_3;
+      printk(KERN_ALERT "gpio_request(0) failed\n");
+      goto init_pins_fail_4;
   }
 
   if (gpio_direction_output(GPIO_BIT0, 0)) {
-    printk(KERN_ALERT "gpio_direction_output GPIO_BIT0 failed\n");
-    goto init_pins_fail_4;
+      printk(KERN_ALERT "gpio_direction_output GPIO_BIT0 failed\n");
+      goto init_pins_fail_4;
   }
 
   return 0;
 
+  /* Error handling code: free in reverse direction */
+
  init_pins_fail_4:
   gpio_free(GPIO_BIT0);
-
- init_pins_fail_3:
+  
+ init_pins_fail_3: 
   gpio_free(GPIO_DIR);
 
- init_pins_fail_2:
+ init_pins_fail_2: 
   gpio_free(GPIO_OE);
 
  init_pins_fail_1:
@@ -672,10 +804,13 @@ static int __init leddev_init_pins(void)
   return -1;
 }
 
+/* Kernel module initialization function */
 static int __init leddev_init(void)
 {
+  /* Zero memory for device struct */
   memset(&leddev_dev, 0, sizeof(leddev_dev));
 
+  /* Run initialization functions in-turn */
   if (leddev_init_cdev())
     goto init_fail_1;
 
@@ -685,9 +820,12 @@ static int __init leddev_init(void)
   if (leddev_init_pins() < 0)
     goto init_fail_3;
 
+  /* Reset driver state */
   leddev_reset();
 
   return 0;
+
+  /* Failure handling: free resources in reverse order (starting at the point we got to) */
 
  init_fail_3:
   device_destroy(leddev_dev.class, leddev_dev.devt);
@@ -703,22 +841,27 @@ static int __init leddev_init(void)
 }
 module_init(leddev_init);
 
+/* Kernel module release function */
 static void __exit leddev_exit(void)
 {
+  /* Free all GPIOs */
   gpio_free(GPIO_OE);
   gpio_free(GPIO_DIR);
   gpio_free(GPIO_BIT0);
 
+  /* Free class device */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
+  /* Free device itself */
   cdev_del(&leddev_dev.cdev);
   unregister_chrdev_region(leddev_dev.devt, 1);
 }
 module_exit(leddev_exit);
 
+/* Module meta-information */
 MODULE_AUTHOR("Ulrik Pagh Schultz");
-MODULE_DESCRIPTION("A module for controlling gumstixstorms LEDs");
+MODULE_DESCRIPTION("A module for controlling a single GumstixNXT LED");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION("0.1");
 \end{verbatim}
