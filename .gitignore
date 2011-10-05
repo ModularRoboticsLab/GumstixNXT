@@ -4,3 +4,5 @@ doc/installGuide/gumstix.out
 doc/installGuide/gumstix.log
 
 doc/installGuide/gumstix.aux
+
+src/drivers/led/onebitleddev.c~

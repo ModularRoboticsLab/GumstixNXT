@@ -1,13 +1,13 @@
 /*
 
-A GumstixNXT LED driver using GPIO, loosely based on irqlat by Scott
+A GumstixNXT LED driver for a single LED using GPIO, loosely based on irqlat by Scott
 Ellis
 
 Sample useage (shell commands):
 insmod leddev.ko
-echo set0set5 > /dev/leddev
+echo set > /dev/leddev
 echo inv > /dev/leddev
-echo clr2clr3clr7inv > /dev/leddev
+echo clr > /dev/leddev
 
 */
 
@@ -30,16 +30,6 @@ echo clr2clr3clr7inv > /dev/leddev
 
 /* GPIOs for controlling the individual bits */
 #define GPIO_BIT0 68
-#define GPIO_BIT1 76
-#define GPIO_BIT2 66
-#define GPIO_BIT3 77
-#define GPIO_BIT4 79
-#define GPIO_BIT5 89
-#define GPIO_BIT6 88
-#define GPIO_BIT7 87
-
-/* Number of GPIOs (this is a generic driver that manages array of GPIOs) */
-#define GPIO_N_BITS 8
 
 /* Signals to send to GPIOs to turn LEDs on and off */
 #define BIT_ON 0
@@ -52,17 +42,11 @@ struct leddev_dev {
   struct cdev cdev; // kernel data structure for character device
   struct class *class; // kernel data structure for device driver class /sys/class/leddev [LDD Chapter 14]
   /* Driver-specific fields */
-  int value; // the integer value currently shown (interpreting the LEDs as bits in a number)
+  int value; // the integer value currently shown, 1 if on, 0 if off
 };
 
 /* device structure instance */
 static struct leddev_dev leddev_dev;
-
-/* All GPIOs managed by the driver, must be GPIO_N_BITS long */
-static int gpio_bits[] = {
-  GPIO_BIT0, GPIO_BIT1, GPIO_BIT2,
-  GPIO_BIT3, GPIO_BIT4, GPIO_BIT5,
-  GPIO_BIT6, GPIO_BIT7 };
 
 /* Reset hardware settings and driver state */
 static void leddev_reset(void)
@@ -71,9 +55,8 @@ static void leddev_reset(void)
   // Reset level shifter control
   gpio_set_value(GPIO_OE, 1);
   gpio_set_value(GPIO_DIR, 0);
-  // Reset each bit to off state
-  for(index=0; index<GPIO_N_BITS; index++)
-    gpio_set_value(gpio_bits[index], BIT_OFF);
+  // Reset the bit to off state
+  gpio_set_value(GPIO_BIT0, BIT_OFF);
   // Reset driver state
   leddev_dev.value = 0;
 }
@@ -81,12 +64,12 @@ static void leddev_reset(void)
 /* Respond to a command that has been written to the device special file */
 static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
-  char cmd[4]; // Buffer for command written by user
+  char cmd[3]; // Buffer for command written by user
   ssize_t status = 0; // Return status, updated depending on input
   int bit; // Bit that the operation has an effect on
 
   /* Copy the data the user wrote from userspace (how much is read depends on return value) */
-  if (copy_from_user(cmd, buff, 4)) {
+  if (copy_from_user(cmd, buff, 3)) {
     printk(KERN_ALERT "Error copy_from_user\n");
     status = -EFAULT;
     goto leddev_write_done;
@@ -94,37 +77,25 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
     
   /*
     Process the command stored in the data
-    'setN' means set bit #N
-    'clrN' means clear bit #N
-    'inv' means invert pattern
+    'set' means set the bit
+    'clr' means clear the bit
+    'inv' means invert
   */
-  bit = cmd[3] - '0'; // Assuming a legal command, this is the bit to manipulate
-
   if (cmd[0] == 's' && cmd[1] == 'e' && cmd[2] == 't') { // Set command?
-    if(bit<0 || bit>=GPIO_N_BITS) { // Check that pin argument is legal
-      printk(KERN_ALERT "LED illegal numeric argument to set\n");
-      return -1;
-    }
-    gpio_set_value(gpio_bits[bit], BIT_ON); // Turn the selected hardware bit on 
-    leddev_dev.value |= 1<<bit; // Store the selected software bit
-    status = 4; // Read 4 bytes, update return status correspondingly
+    gpio_set_value(GPIO_BIT0, BIT_ON); // Turn the hardware bit on 
+    leddev_dev.value = 1; // Store the software bit
+    status = 3; // Read 3 bytes, update return status correspondingly
   }
 
   else if (cmd[0] == 'c' && cmd[1] == 'l' && cmd[2] == 'r') { // Clear command?
-    if(bit<0 || bit>=GPIO_N_BITS) { // Check that pin argument is legal
-      printk(KERN_ALERT "LED illegal numeric argument to clr\n");
-      return -1;
-    }
-    gpio_set_value(gpio_bits[bit], BIT_OFF); // Turn the selected hardware bit off
-    leddev_dev.value ^= 1<<bit; // Turn the selected software bit off
-    status = 4; // Read 4 bytes, update return status correspondingly
+    gpio_set_value(GPIO_BIT0, BIT_OFF); // Turn the selected hardware bit off
+    leddev_dev.value = 0; // Turn the software bit off
+    status = 3; // Read 3 bytes, update return status correspondingly
   }
 
   else if (cmd[0] == 'i' && cmd[1] == 'n' && cmd[2] == 'v') { // Invert command?
-    int index;
-    leddev_dev.value = ~leddev_dev.value; // Invert bit pattern
-    for(index=0; index<GPIO_N_BITS; index++) // Set each bit
-      gpio_set_value(gpio_bits[index], leddev_dev.value&(1<<index) ? BIT_ON : BIT_OFF);
+    leddev_dev.value = !leddev_dev.value; // Invert bit pattern
+    gpio_set_value(GPIO_BIT0, leddev_dev.value ? BIT_ON : BIT_OFF);
     status = 3; // Read 3 bytes, update return status correspondingly
   } 
 
@@ -198,7 +169,6 @@ static int __init leddev_init_class(void)
 /* Reserve and initialize the GPIO pins needed for the driver */
 static int __init leddev_init_pins(void)
 {
-  int gpio_index;
   int direction_output_failure = 0;
 
   /* Request and configure GPIOs for the level shifter */
@@ -222,30 +192,23 @@ static int __init leddev_init_pins(void)
     goto init_pins_fail_3;
   }
 
-  /* Request and configure GPIOs for the individual bits */
-  for(gpio_index=0; gpio_index<GPIO_N_BITS; gpio_index++) {
-    
-    if (gpio_request(gpio_bits[gpio_index], "BitN")) {
-      printk(KERN_ALERT "gpio_request(bitN) failed\n");
+  if (gpio_request(GPIO_BIT0, "Bit0")) {
+      printk(KERN_ALERT "gpio_request(0) failed\n");
       goto init_pins_fail_4;
-    }
+  }
 
-    if (gpio_direction_output(gpio_bits[gpio_index], 0)) {
-      printk(KERN_ALERT "gpio_direction_output GPIO_BITn failed\n");
+  if (gpio_direction_output(GPIO_BIT0, 0)) {
+      printk(KERN_ALERT "gpio_direction_output GPIO_BIT0 failed\n");
       direction_output_failure = 1;
-      goto init_pins_fail_4;
-    }
-
+      goto init_pins_fail_5;
   }
 
   return 0;
 
   /* Error handling code: free in reverse direction */
 
- init_pins_fail_4: // Free those bit GPIOs that were allocated
-  if(!direction_output_failure) gpio_index--; // Failed trying to allocate, don't include
-  for(; gpio_index>=0; gpio_index--)
-    gpio_free(gpio_bits[gpio_index]);
+ init_pins_fail_4:
+  gpio_free(GPIO_BIT0);
   
  init_pins_fail_3: 
   gpio_free(GPIO_DIR);
@@ -302,8 +265,7 @@ static void __exit leddev_exit(void)
   /* Free all GPIOs */
   gpio_free(GPIO_OE);
   gpio_free(GPIO_DIR);
-  for(index=0; index<GPIO_N_BITS; index++)
-    gpio_free(gpio_bits[index]);
+  gpio_free(GPIO_BIT0);
 
   /* Free class device */
   device_destroy(leddev_dev.class, leddev_dev.devt);
@@ -317,6 +279,6 @@ module_exit(leddev_exit);
 
 /* Module meta-information */
 MODULE_AUTHOR("Ulrik Pagh Schultz");
-MODULE_DESCRIPTION("A module for controlling GumstixNXT LEDs");
+MODULE_DESCRIPTION("A module for controlling a single GumstixNXT LED");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_VERSION("0.4");
+MODULE_VERSION("0.1");

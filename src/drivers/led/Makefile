@@ -3,7 +3,7 @@
 # Target directory for "install", customize
 INSTALLDIR=/mnt/oe/home/export
 # Kernel module files to copiler
-MODULES=leddev.o
+MODULES=leddev.o onebitleddev.o
 
 # Generic kernel modoule makefile
 ifneq ($(KERNELRELEASE),)
