@@ -51,7 +51,6 @@ static struct leddev_dev leddev_dev;
 /* Reset hardware settings and driver state */
 static void leddev_reset(void)
 {
-  int index;
   // Reset level shifter control
   gpio_set_value(GPIO_OE, 1);
   gpio_set_value(GPIO_DIR, 0);
@@ -169,8 +168,6 @@ static int __init leddev_init_class(void)
 /* Reserve and initialize the GPIO pins needed for the driver */
 static int __init leddev_init_pins(void)
 {
-  int direction_output_failure = 0;
-
   /* Request and configure GPIOs for the level shifter */
   if (gpio_request(GPIO_OE, "OutputEnable")) {
     printk(KERN_ALERT "gpio_request failed\n");
@@ -200,7 +197,7 @@ static int __init leddev_init_pins(void)
   if (gpio_direction_output(GPIO_BIT0, 0)) {
       printk(KERN_ALERT "gpio_direction_output GPIO_BIT0 failed\n");
       direction_output_failure = 1;
-      goto init_pins_fail_5;
+      goto init_pins_fail_4;
   }
 
   return 0;
