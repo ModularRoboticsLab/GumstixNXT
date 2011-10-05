@@ -11,4 +11,9 @@ yet, start using "git" and check out the files using this command:
 
 This gives you read-only access to the files, read-write access will
 be covered in class (and given to anyone interested once the DES/EMB4
-course has finished, January 2012).
+course has finished, January 2012).  To update whenever a change has
+been ade, simply run
+
+  git pull
+
+in the newly created "GumstixNXT" directory.
