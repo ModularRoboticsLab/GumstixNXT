@@ -1,7 +1,7 @@
 # Cross-compile module makefile for leddev
 
 # Target directory for "install", customize
-INSTALLDIR=/mnt/oe/home/export
+INSTALLDIR=../../export/
 # Kernel module files to copiler
 MODULES=leddev.o onebitleddev.o
 
