@@ -13,7 +13,7 @@ else
 
 default:
 ifeq ($(strip $(KERNELDIR)),)
-	$(error "KERNELDIR is undefined!")
+	$(error "KERNELDIR is undefined, see kernel-dev-env.txt")
 else
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 endif
