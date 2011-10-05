@@ -65,7 +65,6 @@ static ssize_t leddev_write(struct file *filp, const char __user *buff, size_t c
 {
   char cmd[3]; // Buffer for command written by user
   ssize_t status = 0; // Return status, updated depending on input
-  int bit; // Bit that the operation has an effect on
 
   /* Copy the data the user wrote from userspace (how much is read depends on return value) */
   if (copy_from_user(cmd, buff, 3)) {
@@ -257,7 +256,6 @@ module_init(leddev_init);
 /* Kernel module release function */
 static void __exit leddev_exit(void)
 {
-  int index;
   /* Free all GPIOs */
   gpio_free(GPIO_OE);
   gpio_free(GPIO_DIR);
