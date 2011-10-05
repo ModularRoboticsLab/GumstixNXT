@@ -196,7 +196,6 @@ static int __init leddev_init_pins(void)
 
   if (gpio_direction_output(GPIO_BIT0, 0)) {
       printk(KERN_ALERT "gpio_direction_output GPIO_BIT0 failed\n");
-      direction_output_failure = 1;
       goto init_pins_fail_4;
   }
 
