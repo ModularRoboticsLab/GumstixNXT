@@ -5,7 +5,10 @@ INSTALLDIR=../../export/
 # Kernel module files to copiler
 MODULES=leddev.o onebitleddev.o
 
-# Generic kernel modoule makefile
+# Generic kernel module makefile
+
+RESULT=$(MODULES:.o=.ko)
+
 ifneq ($(KERNELRELEASE),)
     obj-m := $(MODULES)
 else
@@ -19,7 +22,7 @@ else
 endif
 
 install:
-	cp $(MODULES) $(INSTALLDIR)
+	cp $(RESULT) $(INSTALLDIR)
 
 clean:
 	rm -rf *~ *.ko *.o *.mod.c modules.order Module.symvers .leddev* .tmp_versions
