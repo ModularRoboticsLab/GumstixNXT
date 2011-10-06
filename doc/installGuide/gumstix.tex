@@ -14,7 +14,7 @@
 
 \newcommand{\out}[1]{\texttt{#1}}
 \newcommand{\promt}[1]{\texttt{\$ \textbf{#1}}}
-
+\newcommand{\stt}[1]{\texttt{\small #1}}
 
 \newcommand{~}{\~{}}
 
@@ -25,10 +25,10 @@
 
 \subsection*{Version and changes}
 
-Revision 1.4.0alpha (\today)
+Revision 1.4.0 (\today)
 %
 \begin{itemize}
-\item From revision 1.3.2: added preliminary description of kernel
+\item From revision 1.3.2: added description of kernel
   module development, including the LED driver and the motor driver
 \item From revision 1.3.1: doing a clean start with fdisk, using minicom, ``1N8 typo''
 \item From revision 1.2: added a bit of information on Ubuntu 10.04
@@ -485,18 +485,32 @@ The basic functionality can be divided into three parts: setup
 far the most complicated part: it starts from the leddev\_init
 function (which is the module initialization function), first sets up
 the character device, then the supplemental class device, and last
-initializes the hardware.  Setting up the character device is done by
-initializing the device structure, dynamically assigning the major
-number, and requesting the kernel to create the entry under /dev.
-Setting up the character device is not covered here.  Setting up the
-hardware basically consists of requesting the required GPIOs and
-configuring the directionality.
+initializes the hardware.  
 
-Response to user requests is implemented by the write function.  This
-function examines the user input (found in the character buffer) to
+Setting up the character device is done in \stt{leddev\_init\_cdev}.
+First, the call to the \stt{MKDEV} macro initializes the device
+structure, after which the major and minor numbers are dynamically
+assigned using \stt{alloc\_chrdev\_region}.  The specific file
+operations (the write function) are added to the device using the
+\stt{cdev\_init} function, and last the device is made available to
+user-space with the call to \stt{cdev\_add}.
+
+Setting up the character device is not covered in detail, but follows
+a standard pattern that will work for any driver (that wishes to
+export a class interface under /sys/class).  Setting up the
+hardware basically consists of requesting the required GPIOs and
+configuring the directionality, but is complicated by the need to
+release them again if something fails.
+
+Response to user requests is implemented by the \stt{leddev\_write} function.  This
+function examines the user input (found in the character buffer
+\stt{buff}) character-by-character to
 decide what actions to take.  Actions are implemented by using the
-appropriate GPIOs.  Care must be takes to return a value corresponding
-to the number of bytes read.  Unloading is concerned with
+appropriate GPIOs and updating the value representing the LED pattern.  
+Care must be takes to return a value corresponding
+to the number of bytes read.  
+
+Last, unloading is fairly straightforward, and is concerned with
 unregistering the device from the kernel and freeing the hardware
 resources.
 
@@ -509,18 +523,27 @@ user command is a bit more intricate but not significantly different.
 
 \subsection{Developing a motor driver}
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=15cm]{images/schematics-motor.pdf}
+\end{center}
+\caption{Excerpt from the GumstixNXT schematics, level-shifters for controlling motors}
+\label{fig:motor-levelshifter}
+\end{figure}
+
 Each motor has two control signals (PHASE$x$ and ENABLE$x$) and two
 tachometer signals (TACHO$x$A and TACHO$x$B), where $x$ is the number
-of the motor.  (See the GumstixNXT schematics.)  Basic motor control
+of the motor.  Figure~\ref{fig:motor-levelshifter} shows the relevant
+part of the GumstixNXT schematics.  Basic motor control
 is simple: the motor is turned on and off using the ENABLE signal and
 the direction is controlled using the PHASE signal.
 %
 The tachometer signals give pulses when the motor moves, so motor
 speed is equal to number of pulses per time unit.  The direction can
-be read from the phase difference between TACHOxA and TACHOxB.
+be read from the phase difference between TACHO$x$A and TACHO$x$B.
 
-The simplest control is thus to set ENABLE to 1 and PHASE to whatever
-direction you want, ignoring TACHO: this will make the motor rotate
+The simplest control of a motor is thus to set ENABLE to 1 and PHASE to the
+value indicating direction, ignoring TACHO: this will make the motor rotate
 full-speed in the given direction.  To actuate the motor at less than
 maximum speed, you must use a PWM signal on ENABLE where the
 duty-cycle indicates how much torque the motor must yield.  More
@@ -537,7 +560,7 @@ An additional complication which must be addressed is that in the
 default open embedded setup, an LCD driver is using the same CPU pins,
 which makes it impossible to control the motors.  To resolve this
 issue, the LCD driver must be disabled, which is done by configuring
-the kernel.  Follow the guide on jumpnowtek.com, which basically
+the kernel.  Follow the ``Gumstix kernel dev'' guide on jumpnowtek.com, which basically
 amounts to running the command
 
 \begin{quote}
@@ -546,9 +569,20 @@ amounts to running the command
 
 This gives you a textual menu for configuring the kernel.  Choose
 ``Device drivers'', ``Graphics support'', and disable everything
-except ``Support for framebuffer devices''.
+except ``Support for framebuffer devices''.  After this you need to
+copy the resulting configuration file and run bitbake again, e.g.\
+(depending on your kernel version):
 
-It is recommended that you configure the kernel and setup u-boot for
+\begin{quote}
+\begin{verbatim}
+cp ${OVEROTOP}/tmp/work/overo-angstrom-linux/gnueabi/linux-omap3-2.6.36-r97/git/.config \
+   ${OVEROTOP}/org.openembedded.dev/recipes/linux/linux-omap3-2.6.36/defconfig
+bitbake -c clean virtual/kernel; bitbake virtual/kernel
+bitbake myimage
+\end{verbatim}
+\end{quote}
+
+It is recommended that you as a start just configure the kernel and setup u-boot for
 access to the PHASE and ENABLE signals.  You can now test the motors
 at maximum speed through the kernel user-level /sys/class/gpio
 interface.  The GumstixNXT ``apps'' directory contains a number of
