@@ -181,7 +181,7 @@ static int __init leddev_init_class(void)
   /* Create a class named leddev */
   leddev_dev.class = class_create(THIS_MODULE, "leddev");
 
-  if (!leddev_dev.class) {
+  if (IS_ERR(leddev_dev.class)) {
     printk(KERN_ALERT "class_create(leddev) failed\n");
     return -1;
   }
