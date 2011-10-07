@@ -18,7 +18,7 @@ build:
 	echo "(No build tasks included.)"
 
 archive: build
-	(cd $(home); rm -f export.tgz; tar --exclude '*.svn*' -zcvf export.tgz export/)
+	(cd $(home); rm -f export.tgz; cd export; tar --exclude '*.svn*' -zcvf ../export.tgz .)
 
 deploy: archive
 	echo "Deploying from $(OVEROTOP) to $(device)"
