@@ -22,7 +22,8 @@ else
 endif
 
 install:
-	cp $(RESULT) $(INSTALLDIR)
+	mkdir -p $(INSTALLDIR)/drivers
+	cp $(RESULT) $(INSTALLDIR)/drivers
 
 clean:
 	rm -rf *~ *.ko *.o *.mod.c modules.order Module.symvers .leddev* .tmp_versions
