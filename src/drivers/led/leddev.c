@@ -187,7 +187,7 @@ static int __init leddev_init_class(void)
   }
 
   /* Create class representation in the file system */
-  if (!device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev")) {
+  if (IS_ERR(device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev"))) {
     class_destroy(leddev_dev.class);
     return -1;
   }
