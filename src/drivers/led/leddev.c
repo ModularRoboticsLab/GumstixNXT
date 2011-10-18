@@ -58,6 +58,9 @@ struct leddev_dev {
 /* device structure instance */
 static struct leddev_dev leddev_dev;
 
+/* Device structure that can be used to create sysfs entries (If you are not going to make any sysfs entries, then ignore this structure */
+static struct device *dev;
+
 /* All GPIOs managed by the driver, must be GPIO_N_BITS long */
 static int gpio_bits[] = {
   GPIO_BIT0, GPIO_BIT1, GPIO_BIT2,
@@ -187,7 +190,10 @@ static int __init leddev_init_class(void)
   }
 
   /* Create class representation in the file system */
-  if (IS_ERR(device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev"))) {
+  /* For creating more sysfs entries look at device_create_file() in drivers/base/core.c within the Linux source */
+  dev = device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev");
+
+  if (IS_ERR(dev)) {
     class_destroy(leddev_dev.class);
     return -1;
   }
@@ -282,6 +288,7 @@ static int __init leddev_init(void)
   /* Failure handling: free resources in reverse order (starting at the point we got to) */
 
  init_fail_3:
+  dev = NULL; /* device_destroy() invalidates this pointer */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
@@ -306,6 +313,7 @@ static void __exit leddev_exit(void)
     gpio_free(gpio_bits[index]);
 
   /* Free class device */
+  dev = NULL; /* device_destroy() invalidates this pointer */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
