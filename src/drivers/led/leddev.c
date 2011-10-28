@@ -51,6 +51,9 @@ struct leddev_dev {
   dev_t devt; // kernel data structure for device numbers (major,minor)
   struct cdev cdev; // kernel data structure for character device
   struct class *class; // kernel data structure for device driver class /sys/class/leddev [LDD Chapter 14]
+  /* Device structure that can be used to create sysfs entries (If you are not going to make any sysfs entries, then ignore this structure */
+  struct device *dev;
+
   /* Driver-specific fields */
   int value; // the integer value currently shown (interpreting the LEDs as bits in a number)
 };
@@ -187,7 +190,11 @@ static int __init leddev_init_class(void)
   }
 
   /* Create class representation in the file system */
-  if (IS_ERR(device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev"))) {
+  /* For creating more sysfs entries look at device_create_file() in drivers/base/core.c within the Linux source */
+  leddev_dev.dev = device_create(leddev_dev.class, NULL, leddev_dev.devt, NULL, "leddev");
+
+  if (IS_ERR(leddev_dev.dev)) {
+    printk(KERN_ALERT "device_create(leddev) failed: error = %ld\n", PTR_ERR(leddev_dev.dev));
     class_destroy(leddev_dev.class);
     return -1;
   }
@@ -282,6 +289,7 @@ static int __init leddev_init(void)
   /* Failure handling: free resources in reverse order (starting at the point we got to) */
 
  init_fail_3:
+  leddev_dev.dev = NULL; /* device_destroy() invalidates this pointer */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
@@ -306,6 +314,7 @@ static void __exit leddev_exit(void)
     gpio_free(gpio_bits[index]);
 
   /* Free class device */
+  leddev_dev.dev = NULL; /* device_destroy() invalidates this pointer */
   device_destroy(leddev_dev.class, leddev_dev.devt);
   class_destroy(leddev_dev.class);
 
