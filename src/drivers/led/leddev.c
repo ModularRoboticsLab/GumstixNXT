@@ -3,7 +3,7 @@
 A GumstixNXT LED driver using GPIO, loosely based on irqlat by Scott
 Ellis
 
-Sample useage (shell commands):
+Sample usage (shell commands):
 insmod leddev.ko
 echo set0set5 > /dev/leddev
 echo inv > /dev/leddev
@@ -25,8 +25,8 @@ echo clr2clr3clr7inv > /dev/leddev
 
 
 /* GPIOs for controlling the level shifter behavior */
-#define GPIO_OE 80
-#define GPIO_DIR 67
+#define GPIO_OE 67
+#define GPIO_DIR 80
 
 /* GPIOs for controlling the individual bits */
 #define GPIO_BIT0 68
@@ -72,8 +72,8 @@ static void leddev_reset(void)
 {
   int index;
   // Reset level shifter control
-  gpio_set_value(GPIO_OE, 1);
-  gpio_set_value(GPIO_DIR, 0);
+  gpio_set_value(GPIO_OE, 0);
+  gpio_set_value(GPIO_DIR, 1);
   // Reset each bit to off state
   for(index=0; index<GPIO_N_BITS; index++)
     gpio_set_value(gpio_bits[index], BIT_OFF);
@@ -185,7 +185,7 @@ static int __init leddev_init_class(void)
   leddev_dev.class = class_create(THIS_MODULE, "leddev");
 
   if (IS_ERR(leddev_dev.class)) {
-    printk(KERN_ALERT "class_create(leddev) failed: %d\n", PTR_ERR(leddev_dev.class));
+    printk(KERN_ALERT "class_create(leddev) failed: %ld\n", PTR_ERR(leddev_dev.class));
     return -1;
   }
 
