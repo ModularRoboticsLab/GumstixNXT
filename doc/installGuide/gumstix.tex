@@ -595,8 +595,14 @@ supports PWM control).
 \subsection{Developing a motor controller}
 
 A motor controller requires use of the TACHO signals to read the
-position of the motor and adjust the PWM control accordingly.  This
-will be covered in a future version of the guide.
+position of the motor and adjust the PWM control accordingly.  Apart
+from the control algorithm, the main difficulty is that this should
+happen at regular intervals, meaning it should be run by a timer
+interrupt.  This will be covered in a future version of the guide.
+
+\subsection{Developing a sensor controller}
+
+\ldots
 
 \newpage
 \appendix
