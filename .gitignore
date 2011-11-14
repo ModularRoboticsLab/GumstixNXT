@@ -12,3 +12,7 @@ src/home/Makefile~
 src/kernel-dev-env.txt~
 
 src/apps/ledstuff/levelshifter-gpio-setup.sh~
+
+src/Makefile~
+
+doc/.DS_Store
