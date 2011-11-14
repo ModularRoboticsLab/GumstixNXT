@@ -25,9 +25,11 @@
 
 \subsection*{Version and changes}
 
-Revision 1.4.2 (\today)
+Revision 1.4.3 (\today)
 %
 \begin{itemize}
+\item From revision 1.4.2: removed hardware issues warning, added
+  instructions for setting up GPIO 31
 \item From revision 1.4.1: added warning about current hardware issues
 \item From revision 1.4.0: added warning about untested motor driver instructions
 \item From revision 1.3.2: added description of kernel
@@ -476,7 +478,7 @@ redeployment to the SD card.
 We will now describe the development of a driver for a single-bit LED;
 this driver is extended in the next subsection to cover all 8 LEDs.
 The complete source code of the driver can be found in
-Appendix~\ref{app:leddev-one-bit}.
+Appendix \ref{app:leddev-one-bit}.
 
 The basic functionality can be divided into three parts: setup
 (loading), response to user requests, and unloading.  The setup is by
@@ -529,12 +531,9 @@ user command is a bit more intricate but not significantly different.
 \label{fig:motor-levelshifter}
 \end{figure}
 
-{\em Note: at the time of writing, hardware issues on the boards
-  prevent motors and sensors from working properly.}
-
 Each motor has two control signals (PHASE$x$ and ENABLE$x$) and two
 tachometer signals (TACHO$x$A and TACHO$x$B), where $x$ is the number
-of the motor.  Figure~\ref{fig:motor-levelshifter} shows the relevant
+of the motor.  Figure \ref{fig:motor-levelshifter} shows the relevant
 part of the GumstixNXT schematics.  Basic motor control
 is simple: the motor is turned on and off using the ENABLE signal and
 the direction is controlled using the PHASE signal.
@@ -556,6 +555,33 @@ pins as GPIOs.  Moreover, the level-shifters have to be set up
 correctly (PHASE and ENABLE as output, TACHO as input).
 Pull-up/pull-down in the u-boot configuration can be used to ensure
 that the motor does not start moving before the driver is ready.
+%
+Note that one of the TACHO signals is read from GPIO 31, which
+according to the technical reference manual is bound to a register
+named ``CONTROL\_PADCONF\_JTAG\_EMU0[31:16]'', this register however
+cannot be found in the usual overo.h file.  The register definition
+line can be added manually, to find the correct name use the find
+command, e.g.:
+%
+\begin{quote}
+\begin{verbatim}
+$ cd $UBOOTDIR
+$ find . -name '*.h' -exec grep "#define CONTROL_PADCONF_JTAG" {} \; -print
+\end{verbatim}
+\end{quote}
+%
+(This assumes you have defined UBOOTDIR like on jumpnowtek.com.)  This
+reveals the name CONTROL\_PADCONF\_JTAG\_EMU1 defined in
+./git/arch/arm/include/asm/arch-omap3/mux.h so the following line
+should be added to overo.h:
+%
+\begin{quote}
+\begin{verbatim}
+	MUX_VAL(CP(JTAG_EMU1),		(IEN  | PTU | EN | M4)) /*GPIO_31*/\
+\end{verbatim}
+\end{quote}
+%
+(The macro ``CP'' prepends CONTROL\_PADCONF to the name.)
 
 An additional complication which must be addressed is that in the
 default open embedded setup, an LCD driver is using the same CPU pins,
