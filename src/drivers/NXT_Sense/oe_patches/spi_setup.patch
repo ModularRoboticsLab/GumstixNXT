@@ -1,0 +1,15 @@
+diff --git org.openembedded.dev/recipes/linux/linux-omap3_2.6.36.orginal org.openembedded.dev/recipes/linux/linux-omap3_2.6.36.bb
+index 17248f0..60612f4 100644
+--- org.openembedded.dev/recipes/linux/linux-omap3_2.6.36.orginal
++++ org.openembedded.dev/recipes/linux/linux-omap3_2.6.36.bb
+@@ -44,5 +44,10 @@ do_configure_prepend() {
+             sed -i 's:CONFIG_USB_MUSB_HDRC_HCD=y:# CONFIG_USB_MUSB_HDRC_HCD is not set:g' ${WORKDIR}/defconfig
+             sed -i 's:# CONFIG_USB_GADGET_MUSB_HDRC is not set:CONFIG_USB_GADGET_MUSB_HDRC=y:g' ${WORKDIR}/defconfig
+         fi
++	
++	#SPI setup according to jumpnowtek.com
++	sed -i 's:CONFIG_TOUCHSCREEN_ADS7846=m:# CONFIG_TOUCHSCREEN_ADS7846 is not set:g' ${WORKDIR}/defconfig
++	sed -i 's:CONFIG_PANEL_LGPHILIPS_LB035Q02=y:# CONFIG_PANEL_LGPHILIPS_LB035Q02 is not set:g' ${WORKDIR}/defconfig
++	sed -i 's:CONFIG_SPI_SPIDEV=y:# CONFIG_SPI_SPIDEV is not set:g' ${WORKDIR}/defconfig
+ }
+ 

@@ -1,0 +1,36 @@
+#unset KERNEL_CROSS_BUILD_ENVIRONMENT_SOURCED
+
+if [[ -z "${KERNEL_CROSS_BUILD_ENVIRONMENT_SOURCED}" ]]; then
+
+        # ups: MACHINE must be set, 'overo' seems right for kernel dev
+        MACHINE=overo
+
+        # Set OETMP to be your OE config TMPDIR. This is a configurable parameter for OE. 
+
+        # For gumstix setups, it is set in ${OVEROTOP}/build/conf/site.conf
+        # This is the gumstix default.
+        OETMP=${OVEROTOP}/tmp
+
+        # For beagleboard setups, this is where it used to be ${OETREE}/build/conf/local.conf
+        # I haven't checked in a long time. This was the default.
+        # OETMP=${OETREE}/tmp
+
+	SYSROOTSDIR=${OETMP}/sysroots
+	STAGEDIR=${SYSROOTSDIR}/`uname -m`-linux/usr
+
+        export KERNELDIR=${SYSROOTSDIR}/${MACHINE}-angstrom-linux-gnueabi/kernel
+
+ 	PATH=${PATH}:${STAGEDIR}/bin:${STAGEDIR}/armv7a/bin
+
+        unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MACHINE
+
+        export ARCH="arm"
+        export CROSS_COMPILE="arm-angstrom-linux-gnueabi-"
+        export CC="arm-angstrom-linux-gnueabi-gcc"
+        export LD="arm-angstrom-linux-gnueabi-ld"
+        export KERNEL_CROSS_BUILD_ENVIRONMENT_SOURCED="true"
+
+        echo "Altered environment for cross building kernel/u-boot with OE tools."
+else
+        echo "Cross build environment already configured."
+fi

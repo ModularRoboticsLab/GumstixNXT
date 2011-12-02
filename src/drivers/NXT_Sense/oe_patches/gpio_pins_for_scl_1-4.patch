@@ -1,0 +1,19 @@
+diff --git git/board/overo/overo.h~ git/board/overo/overo.h
+index fb28216..63ba562 100644
+--- git/board/overo/overo.h~
++++ git/board/overo/overo.h
+@@ -146,10 +146,10 @@ const omap3_sysinfo sysinfo = {
+ 	MUX_VAL(CP(DSS_ACBIAS),		(IDIS | PTD | DIS | M0)) /*DSS_ACBIAS*/\
+ 	MUX_VAL(CP(DSS_DATA0),		(IDIS | PTD | DIS | M0)) /*DSS_DATA0*/\
+ 	MUX_VAL(CP(DSS_DATA1),		(IDIS | PTD | DIS | M4)) /*GPIO_71 - used for 2OE*/\
+-	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | DIS | M0)) /*DSS_DATA2*/\
+-	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | DIS | M0)) /*DSS_DATA3*/\
+-	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | DIS | M0)) /*DSS_DATA4*/\
+-	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | DIS | M0)) /*DSS_DATA5*/\
++	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | DIS | M4)) /*GPIO_72 - SCL3*/\
++	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | DIS | M4)) /*GPIO_73 - SCL1*/\
++	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | DIS | M4)) /*GPIO_74 - SCL4*/\
++	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | DIS | M4)) /*GPIO_75 - SCL2*/\
+ 	MUX_VAL(CP(DSS_DATA6),		(IEN | PTU | DIS | M4)) /*GPIO_76*/\
+ 	MUX_VAL(CP(DSS_DATA7),		(IEN | PTU | DIS | M4)) /*GPIO_77*/\
+ 	MUX_VAL(CP(DSS_DATA8),		(IDIS | PTD | DIS | M0)) /*DSS_DATA8*/\
