@@ -25,7 +25,7 @@
 
 \subsection*{Version and changes}
 
-Revision 2.0 (\today): cleaned up for new iteration of the course.
+Revision pre-2.0 (\today): cleaned up for new iteration of the course, preliminary version not confirmed to be working for the board.
 
 \section{Introduction}
 This document contains a very brief introduction to using embedded Linux on the gumstix overo boards. The document is based on various online sources, but mainly on information also available at www.gumstix.org. The hope is that this document will provide enough information to enable the reader to compile Linux for an Overo board and get it to boot, in this document only booting from a micro SD card will be discussed, however many more booting options are available.
@@ -129,19 +129,18 @@ Now we are done installing OE and are getting ready to build our Linux image. In
 \promt{mkdir -p user.collection/recipes/images}
 \end{quote}
 
+\noindent
 In the directory we just created you should put all recipes you make yourself, you are not supposed to modify the recipes provided as part of the OE installation. Now, in the new directory create a file named \emph{myimage.bb} containing the following:
 
 \begin{quote}
+\begin{minipage}{\textwidth}
 % \begin{verbatim}
 % IMAGE_PREPROCESS_COMMAND = "create_etc_timestamp"
-
 % IMAGE_INSTALL = "task-boot \
 %             util-linux-ng-mount util-linux-ng-umount \
 %             angstrom-version \
 %             "
-
 % export IMAGE_BASENAME = "minimalist-image"
-
 % inherit image
 % \end{verbatim}
 \begin{verbatim}
@@ -166,8 +165,9 @@ export IMAGE_BASENAME = "minimalist-image"
 
 inherit image
 \end{verbatim}
-\end{quote}
 %            SPLASH \
+\end{minipage}
+\end{quote}
 
 This bitbake recipe will build a fairly small, but not minimal, Linux distribution. 
 %
@@ -193,6 +193,7 @@ Once the build is completed you can find the generated files in the \emph{~/over
 \promt{bitbake x-load}
 \end{quote}
 
+\noindent
 This will create the file \emph{MLO-overo} in the \emph{~/overo-oe/tmp/deploy/glibc/images/overo} directory.
 
 \section{Booting from an SD Card}
