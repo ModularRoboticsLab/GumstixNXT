@@ -25,27 +25,12 @@
 
 \subsection*{Version and changes}
 
-Revision 1.4.3 (\today)
-%
-\begin{itemize}
-\item From revision 1.4.2: removed hardware issues warning, added
-  instructions for setting up GPIO 31
-\item From revision 1.4.1: added warning about current hardware issues
-\item From revision 1.4.0: added warning about untested motor driver instructions
-\item From revision 1.3.2: added description of kernel
-  module development, including the LED driver and the motor driver
-\item From revision 1.3.1: doing a clean start with fdisk, using minicom, ``1N8 typo''
-\item From revision 1.2: added a bit of information on Ubuntu 10.04
-  LTS, typographic fixes, spellcheck
-\item From revision 1.1: fixed incorrect URLs, added information on
-  terminal program, more complete explanation for GPIO setup.
-\item From revision 1.0: updated required Ubuntu packages (g$++$, git-core)
-\end{itemize}
+Revision 2.0 (\today): cleaned up for new iteration of the course.
 
 \section{Introduction}
 This document contains a very brief introduction to using embedded Linux on the gumstix overo boards. The document is based on various online sources, but mainly on information also available at www.gumstix.org. The hope is that this document will provide enough information to enable the reader to compile Linux for an Overo board and get it to boot, in this document only booting from a micro SD card will be discussed, however many more booting options are available.
 
-This guide is assuming that the development host is running Ubuntu 10.04 LTS (all updates installed, see Appendix \ref{app:getting-linux} for a quick guide on getting Linux up and running), alternatively VMWare or VirtualBox can be used (see Appendix \ref{app:virtualized} for some notes on using a virtualized host). We will also assume that the reader has access to the serial console port on the overo board, for instance by using the Tobi expansion board or similar.
+This guide is assuming that the development host is running Ubuntu 10.04.04 LTS (all updates installed, see Appendix \ref{app:getting-linux} for a quick guide on getting Linux up and running).  VMWare or VirtualBox can is some cases be used (see Appendix \ref{app:virtualized} for some notes on using a virtualized host). We will also assume that the reader has access to the serial console port on the overo board, for instance by using GumstixNXT, the Tobi expansion board or similar.
 
 \section{Booting Linux}
 First a short introduction to what is needed in order to boot Linux on an overo board.
@@ -937,7 +922,7 @@ MODULE_VERSION("0.1");
 \label{app:getting-linux}
 
 This guide assumes you are using Ubuntu 10.04 LTS (although 10.10 has
-also been shown to work).  To get Ubuntu 10.04 LTS running on your
+also been shown to work, and 12.04 can be made to work with a bit of reconfiguration).  To get Ubuntu 10.04 LTS running on your
 computer, there are basically three installation options:
 %
 \begin{enumerate}
@@ -953,7 +938,7 @@ performance, whereas the third option is both easy and quick and gives
 fairly good performance.  The second option has not been tested and is
 likely to not give stellar performance for the long-running
 OpenEmbedded build process, it might work but we have not tested it.
-The third option is recommended for beginners: it requires to have
+The third option is recommended for beginners: it requires you to have
 enough free space on your harddrive, but then Linux is installed
 transparently and can be selected when you reboot your machine.
 
@@ -962,7 +947,37 @@ www.ubuntu.com to read about Ubuntu, and search for ``Wubi'' on the
 www.ubuntu.com website to learn more about it.  The OpenEmbedded
 environment recommends having at least 60Gb of space on your
 installation, but for the options we are using for our system it seems
-to work with less: 40Gb of space seems to work.
+to work with less: 40Gb of space seems to work, and if short on space 30Gb can be used as a 
+minimum.\footnote{Wubi by default imposes af maximum size of 30Gb,
+  this works for what you will normally be doing in this class.  If
+  you run out of space, it is fairly easy to expand dynamically
+  afterards by adding another virtual harddisk for storing the open
+  embedded environment.  The Wubi main disk can also be expanded after
+  installation, but this is out of the scope of this guide.}
+
+To install Ubuntu 10.04.04 LTS (also called ``Lucid Lynx'') on your
+machine, download the appropriate file from the corresponding
+repository --- typically \url{http://releases.ubuntu.com/lucid/} ---
+so to use Wubi, download \stt{wubi.exe} from this URL.  Linux
+sometimes has issues with specific peripherals and hardware-specific
+facilities, in particular on portable PCs.  Graphics cards and power
+management are typical culprits, as is the wireless network.  Graphics
+cards and power management typically work but with a reduced
+functionality (in which case e.g.\ graphics will slow and the computer
+cannot be put to sleep).  The wireless network is more of an issue,
+but here an external USB network card can be used.  The ASUS USB-N13
+is verified to work with Ubuntu 10.04.04, although unfortunately not
+out-of-the-box, it requires using appropriate drivers which can be
+downloaded and transferred via USB-stick:
+
+\verb!http://driverscollection.com/?H=USB-N13%20%28VER.B1%29&By=ASUS!
+
+\noindent (There is an error in the ``install.sh'' script, everywhere
+it says ``su'' without ``sudo'', change it to ``sudo su''.)
+
+Once the module has been installed, plug in the USB network adapter.
+You can now connect to eduroam, but make sure to pick ``PEAP'' for
+``EAP method'' (and don't worry about the lack of a certificate).
 
 \section{Notes on using a virtualized host for development}
 \label{app:virtualized}
@@ -971,11 +986,12 @@ You can use a virtualized host for your development, but it puts
 certain requirements on the operating system running on the physical
 machine.  Compiling open embedded can be done in any host with
 appropriate resources, e.g.\ 2Gb of RAM and a 40Gb filesystem works
-with Ubuntu (although 60Gb is apparently recommended).  The hard part is interacting with the SD card, which
-requires the ability to partition (MBR scheme) and create filesystems
-(FAT and EXT3).  We have tried two different options: attaching the
-card reader directly to the virtualized host, and using Mac OS to
-interact with the SD card.
+with Ubuntu (although as little as 30Gb can work, and 60Gb is
+apparently recommended).  The hard part is interacting with the SD
+card, which requires the ability to partition (MBR scheme) and create
+filesystems (FAT and EXT3).  We have tried two different options:
+attaching the card reader directly to the virtualized host, and using
+Mac OS to interact with the SD card.
 
 \subsection{Attaching card reader to virtualized host}
 
