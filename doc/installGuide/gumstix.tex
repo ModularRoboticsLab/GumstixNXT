@@ -183,8 +183,18 @@ In order to build the distribution use the following command:
 \end{quote}
  
 You should be aware that this command will potentially take a long time (on the order of hours, depending on available processing power and network bandwidth). Briefly stated this small script instructs bitbake to build a small root file system for our Linux distribution, however, since bitbake takes care of all dependencies for us, this might involve compiling and building the cross compiler to compile the programs in the root file system and the Linux kernel itself plus actually compiling the Linux kernel, the needed kernel modules and utility programs. Further, the source code for many of these steps might not be available locally so they have to be downloaded before compiling them. The process will create a directory named \emph{~/overo-oe/tmp/} do not delete or modify the contents of this directory, this is where the temporary files generated during the build and the actual result will be stored. By keeping the temporary files repeated builds will be much faster. 
-%
-The process might at times appear to have stopped, but can at times be working for an hour before output is displayed.  If you want to stop it, note that a single Control-C will stop the current task but not the whole build process, you need to press Control-C twice to stop it.
+
+The process might at times appear to have stopped, but can at times be working for an hour before output is displayed.  If you want to stop it, note that a single Control-C will stop the current task but not the whole build process, you need to press Control-C twice to stop it.  In general, there is a fair amount of error recovery, and it is capable of e.g.\ trying alternatives for download of software.  For example, currently the following error message is generated at some point:
+
+\begin{verbatim}
+ Connecting to www.angstrom-distribution.org|188.40.83.200|:80... connected.
+ HTTP request sent, awaiting response... 404 Not Found
+ 2012-09-07 12:09:21 ERROR 404: Not Found.
+ 
+ Cloning into /mnt/oe/overo-oe/sources/git/www.sakoman.com.git.linux-omap-2.6.git...
+\end{verbatim}
+
+\noindent Here, after failing the initial HTTP request, the process continues using a different (albeit slower to obtain) source, and will normally proceed to the next task eventually.
 
 Once the build is completed you can find the generated files in the \emph{~/overo-oe/tmp/deploy/glibc/images/overo} at this point it should contain the u-boot boot loader (\emph{u-boot-overo.bin}), the kernel image (\emph{uImage-overo.bin}) and the root file system (\emph{minimalist-image-overo.tar.bz2}) along with some other files. So we still need the first level boot loader. In order to generate this use the command:
 
