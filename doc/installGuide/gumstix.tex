@@ -48,7 +48,11 @@ So in order to get Linux up and running we need to build these four elements and
 Let us first consider the tools needed.
 
 \section{Installing OpenEmbedded}
-OpenEmbedded (OE) is a build system used for the overo boards to create Linux distributions. OE is used to build all the parts we need for our Linux distribution including cross compilers, the kernel, rootfs etc. First we will take a look at how to setup OE.
+OpenEmbedded (OE) is a build system used for the overo boards to
+create Linux distributions. OE is used to build all the parts we need
+for our Linux distribution including cross compilers, the kernel,
+rootfs etc. First we will take a look at how to setup OE.\footnote{The
+  instructions here are based on \url{http://gumstix.org/software-development/open-embedded/61-using-the-open-embedded-build-system.html}}
 
 The heart of OE is the BitBake program and a collection of recipes used by bitbake. The recipes contains information on how to compile and build a given package, along with dependencies and URLs for where to get the source code. It is used to create both the cross compiler, the bootloaders, the kernel and the root file system.
 
@@ -64,7 +68,7 @@ chrpath, ccache, g$++$
 
 \promt{sudo apt-get install git-core subversion gcc patch help2man diffstat texi2html texinfo libncurses5-dev cvs gawk python-dev python-pysqlite2 unzip chrpath ccache g++}
 
-If you are using Ubuntu then be aware that it is likely that /bin/sh is linked to /bin/dash. If this is the case you need to change it to be linked to /bin/bash. This can be done by executing the following command and answering 'no' when asked whether to install dash as /bin/bash:
+Although this does not appear to be the case for Ubuntu 10.04, be aware that depending on your version of Ubuntu, it is possible that /bin/sh is linked to /bin/dash. If this is the case you need to change it to be linked to /bin/bash. This can be done by executing the following command and answering 'no' when asked whether to install dash as /bin/bash:
 
 \begin{quote}
 \promt{sudo dpkg-reconfigure dash}
@@ -86,18 +90,19 @@ Now we will install the OE data and check out the overo Linux branch (there migh
 \begin{quote}
 \promt{git clone git://gitorious.org/gumstix-oe/mainline.git org.openembedded.dev}\\
 \promt{cd org.openembedded.dev}\\
-\promt{git checkout --track -b overo origin/overo}
+\promt{git checkout --track -b overo-2011.03 origin/overo-2011.03}
 \end{quote}
 
 Next we install BitBake:
 \begin{quote}
 \promt{cd ~/overo-oe}\\
 %\promt{git clone git://git.openembedded.net/bitbake bitbake}\\
-\promt{git clone git://github.com/openembedded/bitbake bitbake}\\
+%\promt{git clone git://github.com/openembedded/bitbake bitbake}\\
+\promt{git clone git://git.openembedded.org/bitbake bitbake}\\
 \promt{cd bitbake}\\
-\promt{git checkout 1.10.2}
+\promt{git checkout 1.12.0}
 \end{quote}
-%openembedded.net er nede, desuden bør github give bedre performance
+%openembedded.net er nede, desuden br github give bedre performance
 
 Now we will copy the gumstix profile script files to our build directory:
 \begin{quote}
@@ -105,7 +110,7 @@ Now we will copy the gumstix profile script files to our build directory:
 \promt{cp -r org.openembedded.dev/contrib/gumstix/build .}
 \end{quote}
 
-In order to setup the environment variables for the build system we need to modify the bash profile, this can be done by the following command (you might want to backup .bashrc before issuing it):
+In order to setup the environment variables for the build system we need to modify the bash profile, this can be done by the following command (you might want to backup .bashrc before issuing it, and if you did not install Open Embedded in the suggested directory you will have to edit .bashrc afterwards):
 
 \begin{quote}
 \promt{cat ~/overo-oe/build/profile >> ~/.bashrc}
@@ -127,13 +132,35 @@ Now we are done installing OE and are getting ready to build our Linux image. In
 In the directory we just created you should put all recipes you make yourself, you are not supposed to modify the recipes provided as part of the OE installation. Now, in the new directory create a file named \emph{myimage.bb} containing the following:
 
 \begin{quote}
+% \begin{verbatim}
+% IMAGE_PREPROCESS_COMMAND = "create_etc_timestamp"
+
+% IMAGE_INSTALL = "task-boot \
+%             util-linux-ng-mount util-linux-ng-umount \
+%             angstrom-version \
+%             "
+
+% export IMAGE_BASENAME = "minimalist-image"
+
+% inherit image
+% \end{verbatim}
 \begin{verbatim}
 IMAGE_PREPROCESS_COMMAND = "create_etc_timestamp"
 
 IMAGE_INSTALL = "task-boot \
-            util-linux-ng-mount util-linux-ng-umount \
-            angstrom-version \
-            "
+	      util-linux-ng-mount util-linux-ng-umount \
+	      angstrom-version \
+	      libertas-sd-firmware \
+	      sshd \
+	      wireless-tools \
+	      rt73-firmware \
+	      zd1211-firmware \
+	      dhcp-client \
+	      openssh-misc \
+	      openssh-scp \
+	      openssh-ssh \
+	      wpa-supplicant \
+	      "
 
 export IMAGE_BASENAME = "minimalist-image"
 
@@ -142,7 +169,13 @@ inherit image
 \end{quote}
 %            SPLASH \
 
-This bitbake recipe will build a fairly small, but not minimal, Linux distribution. In order to build the distribution use the following command:
+This bitbake recipe will build a fairly small, but not minimal, Linux distribution. 
+%
+The distribution includes kernel modules for interfacing to the
+wireless network, and software packages for various network-related
+functionalities.
+%
+In order to build the distribution use the following command:
 
 \begin{quote}
 \promt{cd ~/overo-oe}\\
@@ -150,6 +183,8 @@ This bitbake recipe will build a fairly small, but not minimal, Linux distributi
 \end{quote}
  
 You should be aware that this command will potentially take a long time (on the order of hours, depending on available processing power and network bandwidth). Briefly stated this small script instructs bitbake to build a small root file system for our Linux distribution, however, since bitbake takes care of all dependencies for us, this might involve compiling and building the cross compiler to compile the programs in the root file system and the Linux kernel itself plus actually compiling the Linux kernel, the needed kernel modules and utility programs. Further, the source code for many of these steps might not be available locally so they have to be downloaded before compiling them. The process will create a directory named \emph{~/overo-oe/tmp/} do not delete or modify the contents of this directory, this is where the temporary files generated during the build and the actual result will be stored. By keeping the temporary files repeated builds will be much faster. 
+%
+The process might at times appear to have stopped, but can at times be working for an hour before output is displayed.  If you want to stop it, note that a single Control-C will stop the current task but not the whole build process, you need to press Control-C twice to stop it.
 
 Once the build is completed you can find the generated files in the \emph{~/overo-oe/tmp/deploy/glibc/images/overo} at this point it should contain the u-boot boot loader (\emph{u-boot-overo.bin}), the kernel image (\emph{uImage-overo.bin}) and the root file system (\emph{minimalist-image-overo.tar.bz2}) along with some other files. So we still need the first level boot loader. In order to generate this use the command:
 
