@@ -210,7 +210,14 @@ This will create the file \emph{MLO-overo} in the \emph{~/overo-oe/tmp/deploy/gl
 
 \subsection{Installing Linux on the board}
 
-The gumstix boards comes with Linux preinstalled, however, I recommend using the SD card slot for booting the boards. The reason for this is that if the contents of the onboard flash memory gets corrupted due to an error during development it can be difficult to reflash, however, an SD Card can easily be replaced.
+The gumstix boards comes with Linux preinstalled, however, we
+recommend using the SD card slot for booting the boards. The reason
+for this is that if the contents of the onboard flash memory gets
+corrupted due to an error during development it can be difficult to
+reflash, however, an SD Card can easily be replaced.  
+This means that if you power on the board without the SD card
+inserted, it will boot using a standard Linux which will let you run
+various commands, but does not provide dedicated drivers for the board.
 
 The gumstix overo boards are able to boot directly from a micro SD or SDHC card. The following instructions will guide you how to make an SD card bootable an how to install your bootloaders and Linux distribution on it.
 
@@ -421,6 +428,12 @@ After rebuilding and redeploying, the appropriate ports are in GPIO
 and can be used for blinking the LEDs, for example by directly
 accessing the GPIO pins as described next.
 
+If you apply the changes incrementally, for example creating one patch
+file for the first LED, another for the remaining LEDs, and yet
+another for the motors (as described later), the end result can be
+hard to understand and you can end up having conflicts between the
+patches.  (In principle it should work fine, in practice it can cause trouble.)
+
 \subsection{Direct hardware access using GPIO}
 
 The kernel GPIO interface can be accessed directly from the shell:
@@ -618,23 +631,57 @@ An additional complication which must be addressed is that in the
 default open embedded setup, an LCD driver is using the same CPU pins,
 which makes it impossible to control the motors.  To resolve this
 issue, the LCD driver must be disabled, which is done by configuring
-the kernel.  Follow the ``Gumstix kernel dev'' guide on jumpnowtek.com, which basically
+the kernel.  Follow the ``Gumstix kernel dev'' guide on jumpnowtek.com, 
+%
+except that with the default bitbake setting the configuration menu needs 
+to be accessed using the ``screen'' program, which it a bit cumbersome.
+To fix this, edit
+
+\begin{quote}
+\begin{verbatim}
+~/overo-oe/org.openembedded.dev/conf/bitbake.conf
+\end{verbatim}
+\end{quote}
+
+\noindent by replacing the two lines
+
+\begin{quote}
+\begin{verbatim}
+# Set a default
+TERMCMD ?= "${SCREEN_TERMCMD}"
+TERMCMDRUN ?= "${SCREEN_TERMCMDRUN}"
+\end{verbatim}
+\end{quote}
+
+\noindent with the following two lines (that instruct it to open a regular terminal window instead):
+
+\begin{quote}
+\begin{verbatim}
+# Set a default
+TERMCMD ?= "${GNOME_TERMCMD}"
+TERMCMDRUN ?= "${GNOME_TERMCMDRUN}"
+\end{verbatim}
+\end{quote}
+
+\noindent Once this is done, configuring the kernel basically
 amounts to running the command
 
 \begin{quote}
 \promt{bitbake -c menuconfig virtual/kernel}
 \end{quote}
 
-This gives you a textual menu for configuring the kernel.  Choose
+\noindent This gives you a textual menu for configuring the kernel.  
+
+Choose
 ``Device drivers'', ``Graphics support'', and disable everything
 except ``Support for framebuffer devices''.  After this you need to
 copy the resulting configuration file and run bitbake again, e.g.\
 (depending on your kernel version):
 
 \begin{quote}
+%cp ${OVEROTOP}/tmp/work/overo-angstrom-linux/gnueabi/linux-omap3-2.6.36-r97/git/.config ${OVEROTOP}/org.openembedded.dev/recipes/linux/linux-omap3-2.6.36/defconfig
 \begin{verbatim}
-cp ${OVEROTOP}/tmp/work/overo-angstrom-linux/gnueabi/linux-omap3-2.6.36-r97/git/.config \
-   ${OVEROTOP}/org.openembedded.dev/recipes/linux/linux-omap3-2.6.36/defconfig
+cp tmp/work/overo-angstrom-linux-gnueabi/linux-omap3-3.2-r103/git/.config org.openembedded.dev/recipes/linux/linux-omap3-2.6.37-psp04.01.00.03/defconfig
 bitbake -c clean virtual/kernel; bitbake virtual/kernel
 bitbake myimage
 \end{verbatim}
