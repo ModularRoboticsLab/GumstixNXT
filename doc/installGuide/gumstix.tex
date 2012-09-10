@@ -25,7 +25,7 @@
 
 \subsection*{Version and changes}
 
-Revision pre-2.0.1 (\today): cleaned up for new iteration of the course, preliminary version not confirmed to be working for the board.
+Revision 2.0.2 (\today): cleaned up for new iteration of the course, enough checked and verified
 
 \section{Introduction}
 This document contains a very brief introduction to using embedded Linux on the gumstix overo boards. The document is based on various online sources, but mainly on information also available at www.gumstix.org. The hope is that this document will provide enough information to enable the reader to compile Linux for an Overo board and get it to boot, in this document only booting from a micro SD card will be discussed, however many more booting options are available.
@@ -519,8 +519,19 @@ redeployment to the SD card.
 
 \subsection{Cross-compilation environment}
 
-\ldots
-% kernel-dev-env.txt
+To compile kernel modules, you must set up the shell environment to
+enable access to the cross-compilers and other tools included with
+Open Embedded.  The process is explained on
+jumpnowtek.com\footnote{See for example the article
+  \url{http://www.jumpnowtek.com/index.php?option=com_content&view=article&id=46&Itemid=54}},
+and basically consists of sourcing (reading into the shell) the file
+kernel-dev.txt, which can be done by the command
+
+\begin{verbatim}
+. kernel-dev.txt
+\end{verbatim}
+
+\noindent A slightly customized version of the file is available from GumstixNXT github.
 
 \subsection{LEDDEV 1-bit kernel module driver}
 
