@@ -401,7 +401,13 @@ where we can see that GPIO67 is available on
 ``dss\_hsync'' in Mode 0 must be configured to Mode 4 to enable
 ``gpio\_67''.
 
-Following the ``Gumstix U-Boot development'' guide on jumpnowtek.com, we
+The detailed instructions for how to modify the u-boot setup can be found on \url{jumpnowtek.com} under ``Gumstix u-boot dev''.
+%
+Note that the instructions cover two different versions, we are
+working in the 2011.03 branch and must therefore work with ``u-boot'',
+{\em not} ``u-boot-omap3''.
+%
+Following the guide on jumpnowtek.com, we 
 change the pin multiplexing by modifying the overo.h file, e.g., the
 line:
 %
@@ -418,8 +424,17 @@ is changed to
 Since GPIO67 is accessed using register CONTROL\_\ldots\_HSYNC in mode
 4.  All details of how to do this are described on jumpnowtek.com, the
 recommended process is to modify the file, build a patch, add this
-patch to the recipe, and rebuild.  (Note: the description on the web
-page contains a few minor errors in the paths.)  The same changes must
+patch to the recipe, and rebuild.  
+%
+The recipe to modify is \stt{org.openembedded.dev/recipes/u-boot/u-boot\_git.bb} and the \stt{SRC\_URI} to modify is
+
+\begin{verbatim}
+SRC_URI_overo = "git://www.sakoman.com/git/u-boot.git;branch=omap3-v2011.09;protocol=git"
+\end{verbatim}
+
+\noindent
+% (Note: the description on the web page contains a few minor errors in the paths.)  
+The same changes must
 be made for all of the GPIO pins that are needed (reading the
 schematics in Figure \ref{fig:led-levelshifter}, these are GPIOs 80,
 67, 68, 76, 66, 77, 79, 89, 88, and 87).
