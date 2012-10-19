@@ -712,7 +712,8 @@ copy the resulting configuration file and run bitbake again, e.g.\
 \begin{quote}
 %cp ${OVEROTOP}/tmp/work/overo-angstrom-linux/gnueabi/linux-omap3-2.6.36-r97/git/.config ${OVEROTOP}/org.openembedded.dev/recipes/linux/linux-omap3-2.6.36/defconfig
 \begin{verbatim}
-cp tmp/work/overo-angstrom-linux-gnueabi/linux-omap3-3.2-r103/git/.config org.openembedded.dev/recipes/linux/linux-omap3-2.6.37-psp04.01.00.03/defconfig
+cp tmp/work/overo-angstrom-linux-gnueabi/linux-omap3-3.2-r103/git/.config 
+   org.openembedded.dev/recipes/linux/linux-omap3-2.6.37-psp04.01.00.03/defconfig
 bitbake -c clean virtual/kernel; bitbake virtual/kernel
 bitbake myimage
 \end{verbatim}
